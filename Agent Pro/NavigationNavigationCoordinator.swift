@@ -100,14 +100,12 @@ class NavigationCoordinator: ObservableObject {
     
     // MARK: - Deep Links
     func handleDeepLink(_ url: URL) {
-        // Gérer les liens profonds
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
         
         switch components.path {
         case "/player":
             if let playerIdString = components.queryItems?.first(where: { $0.name == "id" })?.value,
                let playerId = UUID(uuidString: playerIdString) {
-                // Navigation vers le joueur spécifique
                 navigate(to: playerId)
             }
         case "/messages":
@@ -123,8 +121,8 @@ class NavigationCoordinator: ObservableObject {
 // MARK: - Enhanced TabView
 struct EnhancedTabView: View {
     @StateObject private var coordinator = NavigationCoordinator()
+    // Ces EnvironmentObjects sont utilisés par les vues réelles si elles sont présentes dans le projet
     @EnvironmentObject var authManager: AuthenticationManager
-    @EnvironmentObject var errorManager: ErrorManager
     
     var body: some View {
         TabView(selection: $coordinator.selectedTab) {
@@ -132,10 +130,8 @@ struct EnhancedTabView: View {
                 NavigationStack(path: $coordinator.navigationPath) {
                     destinationView(for: tab)
                         .navigationDestination(for: UUID.self) { playerId in
-                            // Navigation vers profil joueur
-                            if let player = findPlayer(by: playerId) {
-                                PlayerProfileView(player: player)
-                            }
+                            // Placeholder de navigation vers un joueur
+                            PlayerDetailsPlaceholder(playerId: playerId)
                         }
                 }
                 .tabItem {
@@ -149,39 +145,18 @@ struct EnhancedTabView: View {
         .sheet(item: $coordinator.presentedSheet) { sheet in
             sheetView(for: sheet)
         }
-        .alert(item: $coordinator.alertInfo) { alertInfo in
-            Alert(
-                title: Text(alertInfo.title),
-                message: Text(alertInfo.message),
-                primaryButton: alertInfo.primaryButton.map { button in
-                    switch button.style {
-                    case .default:
-                        return .default(Text(button.title), action: button.action)
-                    case .cancel:
-                        return .cancel(Text(button.title), action: button.action)
-                    case .destructive:
-                        return .destructive(Text(button.title), action: button.action)
-                    }
-                } ?? .default(Text("OK")),
-                secondaryButton: alertInfo.secondaryButton.map { button in
-                    switch button.style {
-                    case .default:
-                        return .default(Text(button.title), action: button.action)
-                    case .cancel:
-                        return .cancel(Text(button.title), action: button.action)
-                    case .destructive:
-                        return .destructive(Text(button.title), action: button.action)
-                    }
-                }
-            )
+        .alert(item: $coordinator.alertInfo) { info in
+            buildAlert(from: info)
         }
     }
     
+    // MARK: - Destinations par onglet
     @ViewBuilder
     private func destinationView(for tab: NavigationCoordinator.MainTab) -> some View {
         switch tab {
         case .home:
-            HomeView()
+            // Placeholder HomeView pour éviter la dépendance à une vue non fournie
+            HomePlaceholderView()
         case .messages:
             MessagesView()
         case .players:
@@ -193,6 +168,7 @@ struct EnhancedTabView: View {
         }
     }
     
+    // MARK: - Feuilles
     @ViewBuilder
     private func sheetView(for sheet: NavigationCoordinator.Sheet) -> some View {
         switch sheet {
@@ -209,13 +185,71 @@ struct EnhancedTabView: View {
         }
     }
     
-    private func findPlayer(by id: UUID) -> Player? {
-        // Implementation pour trouver un joueur par ID
-        return nil
+    // MARK: - Helpers
+    private func buildAlert(from info: NavigationCoordinator.AlertInfo) -> Alert {
+        // Si deux boutons fournis
+        if let primary = info.primaryButton, let secondary = info.secondaryButton {
+            return Alert(
+                title: Text(info.title),
+                message: Text(info.message),
+                primaryButton: mapAlertButton(primary),
+                secondaryButton: mapAlertButton(secondary)
+            )
+        }
+        // Si un seul bouton fourni
+        if let primary = info.primaryButton {
+            return Alert(
+                title: Text(info.title),
+                message: Text(info.message),
+                dismissButton: mapAlertButton(primary)
+            )
+        }
+        // Sinon, bouton OK par défaut
+        return Alert(
+            title: Text(info.title),
+            message: Text(info.message),
+            dismissButton: .default(Text("OK"))
+        )
+    }
+    
+    private func mapAlertButton(_ button: NavigationCoordinator.AlertInfo.AlertButton) -> Alert.Button {
+        switch button.style {
+        case .default:
+            return .default(Text(button.title), action: button.action)
+        case .cancel:
+            return .cancel(Text(button.title), action: button.action)
+        case .destructive:
+            return .destructive(Text(button.title), action: button.action)
+        }
     }
 }
 
-// Placeholder views
+// Placeholder views pour éviter les dépendances manquantes
+
+struct HomePlaceholderView: View {
+    var body: some View {
+        Text("Accueil")
+            .font(.title)
+            .padding()
+            .navigationTitle("Accueil")
+    }
+}
+
+struct PlayerDetailsPlaceholder: View {
+    let playerId: UUID
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("Détail Joueur")
+                .font(.title2)
+            Text(playerId.uuidString)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .navigationTitle("Joueur")
+    }
+}
+
 struct CalendarView: View {
     var body: some View {
         Text("Calendar View")
@@ -233,6 +267,7 @@ struct EditPlayerView: View {
     let player: Player
     var body: some View {
         Text("Edit Player View")
+            .navigationTitle(player.name)
     }
 }
 

@@ -18,9 +18,9 @@ class MockAPIService: APIService {
     func fetchPlayers() async throws -> [Player] {
         try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         
-        // Simuler une erreur parfois
-        if Bool.random() && Bool.random() { // 25% de chance
-            throw AppError.networkError("Impossible de récupérer les joueurs")
+        // Simuler une erreur parfois (25% de chance)
+        if Bool.random() && Bool.random() {
+            throw AppError.network
         }
         
         return MockData.samplePlayers
@@ -30,7 +30,7 @@ class MockAPIService: APIService {
         try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         
         guard let player = MockData.samplePlayers.first(where: { $0.id == id }) else {
-            throw AppError.networkError("Joueur non trouvé")
+            throw AppError.userNotFound
         }
         
         return player
@@ -121,7 +121,8 @@ class EnhancedPlayerManager: ObservableObject {
             if let appError = error as? AppError {
                 lastError = appError
             } else {
-                lastError = AppError.networkError(error.localizedDescription)
+                // Erreur générique réseau
+                lastError = .network
             }
         }
         
@@ -145,7 +146,7 @@ class EnhancedPlayerManager: ObservableObject {
             _ = try await apiService.updatePlayer(updatedPlayer)
         } catch {
             // Handle error - peut-être rollback les changements
-            lastError = AppError.networkError("Impossible de sauvegarder les modifications")
+            lastError = .network
         }
     }
     
@@ -157,7 +158,7 @@ class EnhancedPlayerManager: ObservableObject {
         } catch {
             // Rollback si échec
             players.append(player)
-            lastError = AppError.networkError("Impossible de supprimer le joueur")
+            lastError = .network
         }
     }
     
@@ -180,17 +181,20 @@ class EnhancedPlayerManager: ObservableObject {
     
     // MARK: - Statistics
     var totalPlayersValue: Double {
-        players.reduce(0) { $0 + $1.marketValueDouble }
+        players.reduce(0.0) { acc, player in
+            acc + player.marketValueDouble
+        }
     }
     
     var contractStatusCounts: [Player.ContractStatus: Int] {
         Dictionary(grouping: players, by: \.contractStatus)
-            .mapValues(\.count)
+            .mapValues { $0.count }
     }
     
     var averageAge: Double {
         guard !players.isEmpty else { return 0 }
-        return Double(players.map(\.age).reduce(0, +)) / Double(players.count)
+        let totalAge = players.map(\.age).reduce(0, +)
+        return Double(totalAge) / Double(players.count)
     }
 }
 
@@ -237,5 +241,26 @@ struct MockData {
                 url: "contract_2024.pdf"
             )
         ]
+    }
+}
+
+// MARK: - Player helpers
+extension Player {
+    // Convertit "12M €" -> 12.0, "800k €" -> 0.8, "3.5 €" -> 3.5 (démo simple)
+    var marketValueDouble: Double {
+        let s = marketValue
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "€", with: "")
+            .lowercased()
+        if s.contains("m") {
+            let n = s.replacingOccurrences(of: "m", with: "")
+            return Double(n.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        } else if s.contains("k") {
+            let n = s.replacingOccurrences(of: "k", with: "")
+            let val = Double(n.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+            return val / 1000.0
+        } else {
+            return Double(s.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        }
     }
 }

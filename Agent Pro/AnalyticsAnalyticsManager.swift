@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import os.log
 
 // MARK: - Analytics Events
@@ -24,7 +25,7 @@ enum AnalyticsEvent {
         case .screenView(let screenName):
             return ["screen_name": screenName]
         case .userAction(let action, let parameters):
-            var params = ["action": action]
+            var params: [String: Any] = ["action": action]
             if let additionalParams = parameters {
                 params.merge(additionalParams) { _, new in new }
             }
@@ -53,7 +54,8 @@ enum AnalyticsEvent {
 class AnalyticsManager: ObservableObject {
     static let shared = AnalyticsManager()
     
-    private let logger = Logger(subsystem: "com.agentpro.app", category: "Analytics")
+    // Utiliser explicitement os.Logger pour éviter un conflit de nom
+    private let logger = os.Logger(subsystem: "com.agentpro.app", category: "Analytics")
     private var sessionId: String = UUID().uuidString
     private var sessionStartTime: Date = Date()
     
@@ -87,7 +89,7 @@ class AnalyticsManager: ObservableObject {
         parameters["timestamp"] = Date().timeIntervalSince1970
         
         // Log locally for debugging
-        logger.info("\(event.eventName): \(parameters)")
+        logger.info("\(event.eventName): \(String(describing: parameters))")
         
         // Send to analytics service (implementation dépendant du service choisi)
         sendToAnalyticsService(eventName: event.eventName, parameters: parameters)
@@ -121,7 +123,6 @@ class AnalyticsManager: ObservableObject {
         // TODO: Set user property in analytics service
         print("👤 User Property: \(name) = \(value)")
     }
-    
     func setUserId(_ userId: String) {
         // TODO: Set user ID in analytics service
         print("👤 User ID: \(userId)")

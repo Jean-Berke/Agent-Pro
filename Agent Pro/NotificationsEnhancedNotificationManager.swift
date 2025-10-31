@@ -13,6 +13,7 @@ class EnhancedNotificationManager: NSObject, ObservableObject, UNUserNotificatio
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
+        setupNotificationCategories()
         loadPendingNotifications()
     }
     
@@ -169,7 +170,7 @@ class EnhancedNotificationManager: NSObject, ObservableObject, UNUserNotificatio
         content.sound = .default
         content.badge = NSNumber(value: badgeCount + 1)
         content.categoryIdentifier = category.rawValue
-        content.userInfo = userInfo
+        content.userInfo = userInfo.merging(["notificationId": id]) { _, new in new }
         
         // Ajouter un attachment si approprié
         if category == .performance {
@@ -401,7 +402,7 @@ struct NotificationSettingsView: View {
                         title: "Rappels de contrat",
                         subtitle: "Alertes avant expiration des contrats",
                         isOn: $contractReminders,
-                        color: .orange
+                        color: Color.orange
                     )
                     
                     NotificationToggleRow(
@@ -409,7 +410,7 @@ struct NotificationSettingsView: View {
                         title: "Messages",
                         subtitle: "Nouveaux messages des joueurs",
                         isOn: $messageNotifications,
-                        color: .blue
+                        color: Color.blue
                     )
                     
                     NotificationToggleRow(
@@ -417,7 +418,7 @@ struct NotificationSettingsView: View {
                         title: "Performances",
                         subtitle: "Performances exceptionnelles",
                         isOn: $performanceAlerts,
-                        color: .green
+                        color: Color.green
                     )
                     
                     NotificationToggleRow(
@@ -425,7 +426,7 @@ struct NotificationSettingsView: View {
                         title: "Valeurs marchandes",
                         subtitle: "Changements de valeur marchande",
                         isOn: $marketUpdates,
-                        color: .purple
+                        color: Color.purple
                     )
                 }
                 
@@ -487,5 +488,37 @@ struct PendingNotificationRow: View {
             .foregroundColor(.red)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Row component for toggles
+struct NotificationToggleRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .frame(width: 24)
+                .font(.system(size: 18, weight: .medium))
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+        }
+        .padding(.vertical, 6)
     }
 }

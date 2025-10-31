@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-@main
+
 struct Agent_ProApp: App {
     let persistenceController = PersistenceController.shared
 
