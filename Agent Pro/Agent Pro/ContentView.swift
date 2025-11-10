@@ -553,17 +553,20 @@ struct AppTheme {
     static let errorRed = Color(red: 0.898, green: 0.224, blue: 0.208)
     
     // Dégradés
+    // Rendu dynamique (clair/sombre) basé sur les couleurs sémantiques
     static let primaryGradient = LinearGradient(
         colors: [primaryBlue, secondaryBlue],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
     
-    static let backgroundGradient = LinearGradient(
-        colors: [lightGray, Color.white],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var backgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: [AppColors.background, AppColors.background.opacity(0.85)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
     
     // Ombres
     static let cardShadow = Color.black.opacity(0.08)
@@ -593,7 +596,7 @@ struct PremiumTextField: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         )
         .overlay(
@@ -623,7 +626,7 @@ struct PremiumSecureField: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         )
         .overlay(
@@ -705,7 +708,7 @@ struct QuickActionCard: View {
         .frame(width: 140, height: 120)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 12, x: 0, y: 6)
         )
     }
@@ -743,7 +746,7 @@ struct StatCard: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 12, x: 0, y: 6)
         )
         .frame(maxWidth: .infinity)
@@ -769,7 +772,6 @@ struct ExampleUsageView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // Utilisation du champ de texte personnalisé
             PremiumTextField(
                 placeholder: "Adresse email",
                 text: $email,
@@ -777,20 +779,15 @@ struct ExampleUsageView: View {
                 keyboardType: .emailAddress
             )
             
-            // Utilisation du champ de mot de passe personnalisé
             PremiumSecureField(
                 placeholder: "Mot de passe",
                 text: $password,
                 icon: "lock.fill"
             )
             
-            // Utilisation du bouton personnalisé
-            Button("Se connecter") {
-                // Action de connexion
-            }
+            Button("Se connecter") {}
             .buttonStyle(PremiumButtonStyle())
             
-            // Utilisation d'une carte de statistique
             StatCard(
                 title: "Joueurs",
                 value: "12",
@@ -823,7 +820,6 @@ struct AgentProApp: App {
                 .environmentObject(messageManager)
                 .environmentObject(notificationManager)
                 .onAppear {
-                    // Demander la permission pour les notifications au démarrage
                     Task {
                         await notificationManager.requestPermission()
                     }
@@ -835,28 +831,34 @@ struct AgentProApp: App {
 // VUE PRINCIPALE QUI DÉCIDE QUOI AFFICHER
 struct ContentView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    // Apparence persistée: "system", "light", "dark"
+    @AppStorage("appAppearance") private var appAppearance: String = "system"
+    
+    private var preferredScheme: ColorScheme? {
+        switch appAppearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil // suit le système
+        }
+    }
 
     var body: some View {
         Group {
             if authManager.isAuthenticated {
-                // Utilisateur connecté - montrer l'interface selon son type
                 if authManager.userType == .player {
-                    PlayerMainTabView()   // Interface joueur
+                    PlayerMainTabView()
                 } else {
-                    AgentMainTabView()    // Interface agent
+                    AgentMainTabView()
                 }
             } else if authManager.showOnboarding {
-                OnboardingView()          // Premier lancement - intro
+                OnboardingView()
             } else if authManager.showUserTypeSelection {
-                UserTypeSelectionView()   // Choix agent ou joueur
+                UserTypeSelectionView()
             } else {
-                LoginView()               // Écran de connexion
+                LoginView()
             }
         }
-        // SUPPRIMÉ: ne pas réinitialiser l'état à chaque apparition
-        // .onAppear {
-        //     authManager.checkAuthenticationStatus()
-        // }
+        .preferredColorScheme(preferredScheme)
     }
 }
 
@@ -968,7 +970,6 @@ struct OnboardingView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Pages qui défilent
             TabView(selection: $currentPage) {
                 ForEach(0..<pages.count, id: \.self) { index in
                     OnboardingPageView(page: pages[index])
@@ -978,7 +979,6 @@ struct OnboardingView: View {
             .tabViewStyle(PageTabViewStyle())
             .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
             
-            // Boutons de navigation
             VStack(spacing: 20) {
                 if currentPage == pages.count - 1 {
                     Button("Commencer") {
@@ -1021,7 +1021,6 @@ struct OnboardingPageView: View {
         VStack(spacing: 40) {
             Spacer()
             
-            // Icône avec effet visuel
             ZStack {
                 Circle()
                     .fill(AppTheme.primaryGradient)
@@ -1034,7 +1033,6 @@ struct OnboardingPageView: View {
                     .foregroundStyle(AppTheme.primaryGradient)
             }
             
-            // Texte
             VStack(spacing: 20) {
                 Text(page.title)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -1153,7 +1151,7 @@ struct UserTypeCard: View {
             .padding(24)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
+                    .fill(AppColors.card)
                     .shadow(
                         color: isSelected ? AppTheme.primaryBlue.opacity(0.3) : AppTheme.cardShadow,
                         radius: isSelected ? 15 : 8,
@@ -1199,7 +1197,6 @@ struct LoginView: View {
                 VStack(spacing: 40) {
                     Spacer()
                     
-                    // Logo et titre
                     VStack(spacing: 24) {
                         ZStack {
                             Circle()
@@ -1230,7 +1227,6 @@ struct LoginView: View {
                         }
                     }
                     
-                    // Formulaire de connexion
                     VStack(spacing: 20) {
                         PremiumTextField(
                             placeholder: "Adresse email",
@@ -1256,7 +1252,6 @@ struct LoginView: View {
                     
                     Spacer()
                     
-                    // Liens en bas
                     VStack(spacing: 16) {
                         Button("Créer un compte") {
                             showRegister = true
@@ -1274,7 +1269,6 @@ struct LoginView: View {
                 .padding(.horizontal, 32)
                 .padding(.vertical, 40)
                 
-                // Indicateur de chargement
                 if authManager.isLoading {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
@@ -1289,7 +1283,7 @@ struct LoginView: View {
                             .foregroundColor(AppTheme.darkNavy)
                     }
                     .padding(40)
-                    .background(Color.white)
+                    .background(AppColors.card)
                     .cornerRadius(20)
                 }
             }
@@ -1347,13 +1341,9 @@ struct AgentHomeView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Arrière-plan avec dégradé
-                LinearGradient(
-                    colors: [AppTheme.lightGray, Color.white, AppTheme.lightGray.opacity(0.3)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Arrière-plan avec dégradé dynamique
+                AppTheme.backgroundGradient
+                    .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 32) {
@@ -1381,31 +1371,24 @@ struct AgentHomeView: View {
                 
                 // Bouton d’action flottant
                 FloatingActionMenu(isOpen: $showFABMenu) {
-                    // 1. Nouveau message
                     Button {
                         showComposeSheet = true
                         showFABMenu = false
                     } label: {
                         Label("Nouveau message", systemImage: "square.and.pencil")
                     }
-                    // 2. Nouveau joueur
                     Button {
                         showFABMenu = false
-                        // Placeholder action
                     } label: {
                         Label("Nouveau joueur", systemImage: "person.crop.circle.badge.plus")
                     }
-                    // 3. Nouveau document
                     Button {
                         showFABMenu = false
-                        // Placeholder action
                     } label: {
                         Label("Nouveau document", systemImage: "doc.badge.plus")
                     }
-                    // 4. RDV
                     Button {
                         showFABMenu = false
-                        // Placeholder action
                     } label: {
                         Label("Planifier RDV", systemImage: "calendar.badge.plus")
                     }
@@ -1449,7 +1432,7 @@ struct AgentHomeView: View {
                     Button(action: {}) {
                         ZStack {
                             Circle()
-                                .fill(Color.white)
+                                .fill(AppColors.card)
                                 .frame(width: 44, height: 44)
                                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
                             
@@ -1457,7 +1440,6 @@ struct AgentHomeView: View {
                                 .font(.system(size: 18, weight: .medium))
                                 .foregroundColor(AppTheme.primaryBlue)
                             
-                            // Badge de notification
                             let totalUnread = messageManager.chats.reduce(0, { $0 + $1.unreadForAgent })
                             if totalUnread > 0 {
                                 Circle()
@@ -1485,7 +1467,7 @@ struct AgentHomeView: View {
             .padding(.horizontal, 24)
             .padding(.top, 60)
             .padding(.bottom, 12)
-            .background(Color.white.opacity(0.95))
+            .background(AppColors.card.opacity(0.95))
             
             // Barre de recherche rapide
             HStack(spacing: 12) {
@@ -1497,7 +1479,7 @@ struct AgentHomeView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white)
+                    .fill(AppColors.card)
                     .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
             )
             .padding(.horizontal, 24)
@@ -1531,7 +1513,7 @@ struct AgentHomeView: View {
                                 .padding(10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.white)
+                                        .fill(AppColors.card)
                                         .shadow(color: AppTheme.cardShadow, radius: 6, x: 0, y: 3)
                                 )
                             }
@@ -1599,7 +1581,7 @@ struct AgentHomeView: View {
                 RoundedRectangle(cornerRadius: 24)
                     .fill(
                         LinearGradient(
-                            colors: [Color.white, AppTheme.lightGray.opacity(0.3)],
+                            colors: [AppColors.card, AppColors.card.opacity(0.9)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -1651,7 +1633,6 @@ struct AgentHomeView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
-                    // Test notification
                     Button(action: {
                         if let firstPlayer = playerManager.players.first {
                             notificationManager.scheduleContractReminder(for: firstPlayer, daysBeforeExpiry: 1)
@@ -1847,7 +1828,7 @@ struct MiniIndicator: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.6))
+                .fill(AppColors.card.opacity(0.6))
         )
     }
 }
@@ -1891,7 +1872,7 @@ struct ActivityRow: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow.opacity(0.5), radius: 8, x: 0, y: 4)
         )
     }
@@ -2023,7 +2004,7 @@ struct PlayerRowView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         )
         .padding(.horizontal, 16)
@@ -2045,7 +2026,6 @@ struct MessagesView: View {
 
                 VStack(spacing: 0) {
                     if messageManager.chats.isEmpty {
-                        // Écran vide
                         VStack(spacing: 24) {
                             Image(systemName: "message.circle")
                                 .font(.system(size: 80, weight: .thin))
@@ -2082,7 +2062,6 @@ struct MessagesView: View {
                         .listStyle(PlainListStyle())
                         .background(Color.clear)
                         .refreshable {
-                            // Simulation d’un refresh (backend plus tard)
                             try? await Task.sleep(nanoseconds: 800_000_000)
                         }
                     }
@@ -2173,7 +2152,7 @@ struct ChatRowView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         )
         .padding(.horizontal, 16)
@@ -2190,7 +2169,6 @@ struct ChatDetailView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Liste des messages
             ScrollView {
                 LazyVStack(spacing: 16) {
                     ForEach(chat.messages) { message in
@@ -2201,7 +2179,6 @@ struct ChatDetailView: View {
             }
             .background(AppTheme.backgroundGradient)
             
-            // Barre de saisie
             HStack(spacing: 16) {
                 Button(action: {}) {
                     Image(systemName: "plus.circle.fill")
@@ -2224,7 +2201,7 @@ struct ChatDetailView: View {
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 25)
-                        .fill(Color.white)
+                        .fill(AppColors.card)
                         .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
                 )
             }
@@ -2243,10 +2220,9 @@ struct ChatDetailView: View {
             }
         }
         .onAppear {
-            // Marquer comme lu côté Agent avec un léger délai (debounce)
             readTask?.cancel()
             readTask = Task { [chatId = chat.id] in
-                try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s
+                try? await Task.sleep(nanoseconds: 400_000_000)
                 await MainActor.run {
                     messageManager.markChatAsRead(chatId: chatId, for: .agent)
                 }
@@ -2285,7 +2261,7 @@ struct MessageBubbleView: View {
                                     .fill(AppTheme.primaryGradient)
                             } else {
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.white)
+                                    .fill(AppColors.card)
                             }
                         }
                         .shadow(color: AppTheme.cardShadow, radius: 6, x: 0, y: 3)
@@ -2317,6 +2293,9 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationView {
+            ZOOMark: do {
+                // The original code block begins
+            }
             ZStack {
                 AppTheme.backgroundGradient
                     .ignoresSafeArea()
@@ -2348,7 +2327,7 @@ struct SettingsView: View {
                             Spacer()
                         }
                         .padding(.vertical, 12)
-                        .listRowBackground(Color.white)
+                        .listRowBackground(AppColors.card)
                     }
                     
                     // Section Paramètres
@@ -2358,7 +2337,7 @@ struct SettingsView: View {
                         SettingsRow(icon: "folder.fill", title: "Stockage", color: AppTheme.successGreen)
                         SettingsRow(icon: "questionmark.circle.fill", title: "Aide", color: AppTheme.primaryBlue)
                     }
-                    .listRowBackground(Color.white)
+                    .listRowBackground(AppColors.card)
                     
                     // Section Application
                     Section(header: Text("Application")) {
@@ -2381,7 +2360,7 @@ struct SettingsView: View {
                             }
                             .padding(.vertical, 4)
                         }
-                        .listRowBackground(Color.white)
+                        .listRowBackground(AppColors.card)
                     }
                 }
                 .listStyle(InsetGroupedListStyle())
@@ -2439,7 +2418,6 @@ struct SettingsRow: View {
     }
 }
 // ÉTAPE 6 FINALE: INTERFACE COMPLÈTE POUR LES JOUEURS
-// Voici tous les écrans spécifiques aux joueurs
 
 // ÉCRAN D'ACCUEIL POUR LES JOUEURS
 struct PlayerHomeView: View {
@@ -2449,12 +2427,8 @@ struct PlayerHomeView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                LinearGradient(
-                    colors: [AppTheme.lightGray, Color.white, AppTheme.lightGray.opacity(0.3)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                AppTheme.backgroundGradient
+                    .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 32) {
@@ -2501,7 +2475,7 @@ struct PlayerHomeView: View {
                     Button(action: {}) {
                         ZStack {
                             Circle()
-                                .fill(Color.white)
+                                .fill(AppColors.card)
                                 .frame(width: 44, height: 44)
                                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
                             Image(systemName: "bell.fill")
@@ -2525,7 +2499,7 @@ struct PlayerHomeView: View {
             .padding(.horizontal, 24)
             .padding(.top, 60)
             .padding(.bottom, 24)
-            .background(Color.white.opacity(0.95))
+            .background(AppColors.card.opacity(0.95))
         }
     }
     
@@ -2577,7 +2551,7 @@ struct PlayerHomeView: View {
             .background(
                 RoundedRectangle(cornerRadius: 24)
                     .fill(LinearGradient(
-                        colors: [Color.white, AppTheme.lightGray.opacity(0.3)],
+                        colors: [AppColors.card, AppColors.card.opacity(0.9)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ))
@@ -2724,7 +2698,7 @@ struct PerformanceCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         )
     }
@@ -2768,7 +2742,7 @@ struct MatchCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 10, x: 0, y: 5)
         )
     }
@@ -2830,7 +2804,6 @@ struct PlayerStatsView: View {
                 .foregroundColor(AppTheme.darkNavy)
                 .frame(maxWidth: .infinity, alignment: .leading)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                // Utilisation de StatsCard (alias de StatCard) pour corriger l’erreur
                 StatsCard(title: "Buts", value: "12", subtitle: "Cette saison", color: AppTheme.successGreen)
                 StatsCard(title: "Passes D.", value: "8", subtitle: "Assists", color: AppTheme.primaryBlue)
                 StatsCard(title: "Matchs", value: "23", subtitle: "Joués", color: AppTheme.warningOrange)
@@ -2856,7 +2829,7 @@ struct PlayerStatsView: View {
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
+                    .fill(AppColors.card)
                     .shadow(color: AppTheme.cardShadow, radius: 12, x: 0, y: 6)
             )
         }
@@ -2876,7 +2849,7 @@ struct PlayerStatsView: View {
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white)
+                    .fill(AppColors.card)
                     .shadow(color: AppTheme.cardShadow, radius: 12, x: 0, y: 6)
             )
         }
@@ -2960,7 +2933,6 @@ struct PlayerMessagesView: View {
                         .listStyle(PlainListStyle())
                         .background(Color.clear)
                         .refreshable {
-                            // Simulation d’un refresh
                             try? await Task.sleep(nanoseconds: 800_000_000)
                         }
                     }
@@ -3023,7 +2995,7 @@ struct AgentChatRowView: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
+        .background(RoundedRectangle(cornerRadius: 16).fill(AppColors.card).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
         .padding(.horizontal, 16).padding(.vertical, 4)
     }
 }
@@ -3050,7 +3022,7 @@ struct PlayerChatView: View {
                 TextField("Tapez votre message...", text: $messageText)
                     .font(.system(size: 16, weight: .medium))
                     .padding(.horizontal, 16).padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 25).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 25).fill(AppColors.card))
                 
                 Button(action: { sendMessage() }) {
                     Image(systemName: "arrow.up.circle.fill")
@@ -3074,10 +3046,9 @@ struct PlayerChatView: View {
             }
         }
         .onAppear {
-            // Marquer comme lu côté Joueur avec un léger délai
             readTask?.cancel()
             readTask = Task { [chatId = chat.id] in
-                try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s
+                try? await Task.sleep(nanoseconds: 400_000_000)
                 await MainActor.run {
                     messageManager.markChatAsRead(chatId: chatId, for: .player)
                 }
@@ -3112,7 +3083,7 @@ struct PlayerMessageBubbleView: View {
                                     .fill(AppTheme.primaryGradient)
                             } else {
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.white)
+                                    .fill(AppColors.card)
                             }
                         }
                         .shadow(color: AppTheme.cardShadow, radius: 6, x: 0, y: 3)
@@ -3228,7 +3199,7 @@ struct PlayerDocumentRowView: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
+        .background(RoundedRectangle(cornerRadius: 16).fill(AppColors.card).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
         .padding(.horizontal, 16).padding(.vertical, 4)
     }
 }
@@ -3288,7 +3259,7 @@ struct PlayerProfileView: View {
             }
         }
         .padding(24)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Color.white).shadow(color: AppTheme.cardShadow, radius: 15, x: 0, y: 8))
+        .background(RoundedRectangle(cornerRadius: 20).fill(AppColors.card).shadow(color: AppTheme.cardShadow, radius: 15, x: 0, y: 8))
     }
     
     private var profileStats: some View {
@@ -3355,7 +3326,7 @@ struct ProfileStatItem: View {
         }
         .frame(maxWidth: .infinity)
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
+        .background(RoundedRectangle(cornerRadius: 16).fill(AppColors.card).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
     }
 }
 
@@ -3373,7 +3344,7 @@ struct ProfileSection<Content: View>: View {
                 Text(title).font(.system(size: 18, weight: .bold)).foregroundColor(AppTheme.darkNavy)
             }
             VStack(spacing: 1) { content }
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color.white).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
+                .background(RoundedRectangle(cornerRadius: 16).fill(AppColors.card).shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4))
         }
     }
 }
@@ -3432,7 +3403,7 @@ struct PlayerContractCard: View {
         .frame(width: 180)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white)
+                .fill(AppColors.card)
                 .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         )
     }
@@ -3464,7 +3435,7 @@ struct FloatingActionMenu<Content: View>: View {
                             .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.white)
+                                    .fill(AppColors.card)
                                     .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
                             )
                             .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -3557,7 +3528,7 @@ struct ComposeMessageSheet: View {
                                         }
                                     }
                                     .padding(10)
-                                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
+                                    .background(RoundedRectangle(cornerRadius: 12).fill(AppColors.card))
                                 }
                             }
                         }
@@ -3573,7 +3544,7 @@ struct ComposeMessageSheet: View {
                     TextEditor(text: $text)
                         .frame(minHeight: 120)
                         .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white).shadow(color: AppTheme.cardShadow, radius: 6, x: 0, y: 3))
+                        .background(RoundedRectangle(cornerRadius: 12).fill(AppColors.card).shadow(color: AppTheme.cardShadow, radius: 6, x: 0, y: 3))
                 }
                 
                 Spacer()
